@@ -1,3 +1,3 @@
 # astro-robots
 
-Ziad LAHROUNI
+Ziad LAHROUNI (ziadlahrouni.com)
