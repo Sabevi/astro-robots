@@ -15,57 +15,58 @@ use ratatui::{
 use std::{io, time::Duration};
 
 mod map;
-mod simulation;
 
 use map::map_widget::MapWidget;
 
+// Define fixed dimensions for the simulation map
+const MAP_WIDTH: u32 = 200;
+const MAP_HEIGHT: u32 = 100;
+
 fn main() -> Result<()> {
+    // Initialize terminal in raw mode and alternate screen
     enable_raw_mode()?;
     let mut stdout = io::stdout();
     execute!(stdout, EnterAlternateScreen)?;
     let backend = CrosstermBackend::new(stdout);
     let mut terminal = Terminal::new(backend)?;
 
+    // Initialize map with random seed
     let random_seed = rand::random::<u64>();
-    let mut map = map::Map::new(200, 100, random_seed);
+    let mut map = map::Map::new(MAP_WIDTH, MAP_HEIGHT, random_seed);
     
+    // Main rendering loop
     loop {
         terminal.draw(|f| {
-            // Créer un layout vertical avec une zone pour la carte et une pour les infos
+            // Create vertical layout with map and info sections
             let chunks = Layout::default()
                 .direction(Direction::Vertical)
                 .constraints([
-                    Constraint::Min(3),     // Pour la carte
-                    Constraint::Length(3),  // Pour la barre d'information
+                    Constraint::Min(3),
+                    Constraint::Length(3),
                 ].as_ref())
                 .split(f.size());
             
-            // Zone de la carte
+            // Render map section with border
             let map_block = Block::default()
-                .title("EREEA Simulation")
+                .title("Robots swarm")
                 .borders(Borders::ALL);
             
             let map_widget = MapWidget::new(&map);
             f.render_widget(map_block.clone(), chunks[0]);
             f.render_widget(map_widget, chunks[0].inner(&Default::default()));
 
-            // Barre d'information en bas
+            // Render information bar with controls and map data
             let info_block = Block::default()
-                .title("Commandes")
+                .title("Commands")
                 .borders(Borders::ALL);
 
             let info_text = vec![
                 Line::from(vec![
-                    Span::raw("Appuyez sur "),
+                    Span::raw("Press "),
                     Span::styled("'r'", Style::default().fg(Color::Yellow)),
-                    Span::raw(" pour régénérer la carte | "),
+                    Span::raw(" to regenerate map | "),
                     Span::styled("'q'", Style::default().fg(Color::Yellow)),
-                    Span::raw(" pour quitter | "),
-                    Span::raw("Base position: "),
-                    Span::styled(
-                        format!("({}, {})", map.base_position.0, map.base_position.1),
-                        Style::default().fg(Color::Blue)
-                    ),
+                    Span::raw(" to quit "),
                     Span::raw(" | Seed: "),
                     Span::styled(map.seed.to_string(), Style::default().fg(Color::Cyan)),
                 ]),
@@ -78,13 +79,14 @@ fn main() -> Result<()> {
             f.render_widget(info, chunks[1]);
         })?;
 
+        // Handle user input
         if event::poll(Duration::from_millis(16))? {
             if let Event::Key(key) = event::read()? {
                 match key.code {
                     KeyCode::Char('q') => break,
                     KeyCode::Char('r') => {
                         let random_seed = rand::random::<u64>();
-                        map = map::Map::new(200, 100, random_seed);
+                        map = map::Map::new(MAP_WIDTH, MAP_HEIGHT, random_seed);
                     }
                     _ => {}
                 }
@@ -92,6 +94,7 @@ fn main() -> Result<()> {
         }
     }
 
+    // Restore terminal state
     disable_raw_mode()?;
     execute!(terminal.backend_mut(), LeaveAlternateScreen)?;
     Ok(())
