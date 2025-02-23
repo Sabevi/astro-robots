@@ -6,7 +6,7 @@ edition = "2021"
 [dependencies]
 ratatui = "0.23.0"
 crossterm = "0.27.0"
-noise = "0.8.0"
-anyhow = "1.0"  # Pour la gestion d'erreurs
+noise = "0.8"
+anyhow = "1.0"
 rand = "0.8.5"
 serde = { version = "1.0", features = ["derive"] }
