@@ -42,7 +42,7 @@ fn main() -> Result<()> {
                 .direction(Direction::Vertical)
                 .constraints([
                     Constraint::Min(3),
-                    Constraint::Length(3),
+                    Constraint::Length(4), // Increased to accommodate additional info line
                 ].as_ref())
                 .split(f.size());
             
@@ -60,6 +60,9 @@ fn main() -> Result<()> {
                 .title("Commands")
                 .borders(Borders::ALL);
 
+            // Get resource statistics
+            let (energy_count, mineral_count, scientific_count) = map.resource_statistics();
+            
             let info_text = vec![
                 Line::from(vec![
                     Span::raw("Press "),
@@ -69,6 +72,20 @@ fn main() -> Result<()> {
                     Span::raw(" to quit "),
                     Span::raw(" | Seed: "),
                     Span::styled(map.seed.to_string(), Style::default().fg(Color::Cyan)),
+                ]),
+                Line::from(vec![
+                    Span::raw("Resources: Energy ("),
+                    Span::styled("E", Style::default().fg(Color::Yellow)),
+                    Span::raw("): "),
+                    Span::styled(energy_count.to_string(), Style::default().fg(Color::Yellow)),
+                    Span::raw(" | Minerals ("),
+                    Span::styled("M", Style::default().fg(Color::Blue)),
+                    Span::raw("): "),
+                    Span::styled(mineral_count.to_string(), Style::default().fg(Color::Blue)),
+                    Span::raw(" | Scientific points ("),
+                    Span::styled("S", Style::default().fg(Color::Green)),
+                    Span::raw("): "),
+                    Span::styled(scientific_count.to_string(), Style::default().fg(Color::Green)),
                 ]),
             ];
 

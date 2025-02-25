@@ -35,10 +35,13 @@ impl Widget for MapWidget<'_> {
                 let map_y = y as u32;
                 
                 if let Some(tile) = self.map.get_tile(map_x, map_y) {
-                    // Define appearance of obstacles and empty spaces
+                    // Define appearance of different tile types
                     let (ch, style) = match tile {
-                        Tile::Obstacle => ('#', Style::default().fg(Color::Red)), // Red obstacles
-                        Tile::Empty => ('.', Style::default().fg(Color::Gray)),   // Gray empty space
+                        Tile::Obstacle => ('#', Style::default().fg(Color::Red)),      // Red obstacles
+                        Tile::Empty => ('.', Style::default().fg(Color::Gray)),        // Gray empty space
+                        Tile::Energy(_) => ('E', Style::default().fg(Color::Yellow)),  // Yellow energy
+                        Tile::Mineral(_) => ('M', Style::default().fg(Color::Blue)),   // Blue minerals
+                        Tile::ScientificPoint(_) => ('S', Style::default().fg(Color::Green)), // Green scientific points
                     };
                     
                     // Draw the tile at the correct position in the terminal buffer
