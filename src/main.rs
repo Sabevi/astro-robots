@@ -61,7 +61,8 @@ fn main() -> Result<()> {
                 .borders(Borders::ALL);
 
             // Get resource statistics
-            let (energy_count, mineral_count, scientific_count) = map.resource_statistics();
+            let (energy_bases, mineral_bases, scientific_bases) = map.count_resource_bases();
+            let (energy_total, mineral_total, scientific_total) = map.calculate_total_resources();
             
             let info_text = vec![
                 Line::from(vec![
@@ -74,18 +75,25 @@ fn main() -> Result<()> {
                     Span::styled(map.seed.to_string(), Style::default().fg(Color::Cyan)),
                 ]),
                 Line::from(vec![
-                    Span::raw("Resources: Energy ("),
-                    Span::styled("E", Style::default().fg(Color::Yellow)),
+                    Span::raw("Energy Bases ("),
+                    Span::styled("⚡", Style::default().fg(Color::Yellow)),
                     Span::raw("): "),
-                    Span::styled(energy_count.to_string(), Style::default().fg(Color::Yellow)),
-                    Span::raw(" | Minerals ("),
-                    Span::styled("M", Style::default().fg(Color::Blue)),
+                    Span::styled(energy_bases.to_string(), Style::default().fg(Color::Yellow)),
+                    Span::raw(" (Total: "),
+                    Span::styled(energy_total.to_string(), Style::default().fg(Color::Yellow)),
+                    Span::raw(") | Mineral Bases ("),
+                    Span::styled("♦", Style::default().fg(Color::Blue)),
                     Span::raw("): "),
-                    Span::styled(mineral_count.to_string(), Style::default().fg(Color::Blue)),
-                    Span::raw(" | Scientific points ("),
-                    Span::styled("S", Style::default().fg(Color::Green)),
+                    Span::styled(mineral_bases.to_string(), Style::default().fg(Color::Blue)),
+                    Span::raw(" (Total: "),
+                    Span::styled(mineral_total.to_string(), Style::default().fg(Color::Blue)),
+                    Span::raw(") | Scientific Bases ("),
+                    Span::styled("★", Style::default().fg(Color::Green)),
                     Span::raw("): "),
-                    Span::styled(scientific_count.to_string(), Style::default().fg(Color::Green)),
+                    Span::styled(scientific_bases.to_string(), Style::default().fg(Color::Green)),
+                    Span::raw(" (Total: "),
+                    Span::styled(scientific_total.to_string(), Style::default().fg(Color::Green)),
+                    Span::raw(")"),
                 ]),
             ];
 

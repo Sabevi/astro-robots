@@ -1,17 +1,35 @@
 // ========================= IMPORTS ========================= //
 use noise::{NoiseFn, Value};
 use serde::{Serialize, Deserialize};
+use rand::{Rng, SeedableRng};
 pub mod map_widget;  
 
 // ========================= CONSTANTS ========================= //
 const OBSTACLE_THRESHOLD: f64 = 0.4; 
 const NOISE_SCALE: f64 = 0.2;
-const ENERGY_THRESHOLD: f64 = -0.2;      // Valeur de bruit pour l'énergie
-const MINERAL_THRESHOLD: f64 = 0.0;      // Valeur de bruit pour les minéraux
-const SCIENTIFIC_THRESHOLD: f64 = 0.2;   // Valeur de bruit pour les points scientifiques
-const RESOURCE_NOISE_SCALE: f64 = 0.1;   // Échelle différente pour les ressources
-const MIN_RESOURCE_AMOUNT: u32 = 50;     // Quantité minimale
-const MAX_RESOURCE_AMOUNT: u32 = 200;    // Quantité maximale
+const BASE_COUNT_MIN: u32 = 5;
+const BASE_COUNT_MAX: u32 = 15;
+const BASE_AMOUNT_MIN: u32 = 5000;
+const BASE_AMOUNT_MAX: u32 = 20000;
+
+// ========================= RESOURCE STRUCTURES ========================= //
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct Energy {
+    pub amount: u32,
+    pub is_base: bool, // Flag to indicate if this is a resource base
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct Mineral {
+    pub amount: u32,
+    pub is_base: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct ScientificPoint {
+    pub value: u32,
+    pub is_base: bool,
+}
 
 // ========================= MAP STRUCTURE ========================= //
 // Represents the entire game map
@@ -26,56 +44,83 @@ pub struct Map {
 // ========================= TILE ENUM ========================= //
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum Tile {
-    Empty,                // Walkable space with no obstacle
-    Obstacle,             // Non-walkable space
-    Energy(u32),          // Energy resource with amount
-    Mineral(u32),         // Mineral resource with amount
-    ScientificPoint(u32), // Scientific interest point with value
+    Empty,                          
+    Obstacle,                       
+    Energy(Energy),       
+    Mineral(Mineral),      
+    ScientificPoint(ScientificPoint), 
 }
-
 
 // ========================= MAP IMPLEMENTATION ========================= //
 impl Map {
     /// Creates a new map with the given dimensions and seed.
-    pub fn new(width: u32, height: u32, seed: u64) -> Self {
-        let mut tiles = Vec::with_capacity((width * height) as usize);
-        let obstacle_noise = Value::new(seed as u32);
-        let resource_noise = Value::new((seed.wrapping_add(1)) as u32);
-        
-        // Generate the map tiles
-        for y in 0..height {
-            for x in 0..width {
-                let obstacle_value = obstacle_noise.get([x as f64 * NOISE_SCALE, y as f64 * NOISE_SCALE]);
-                let resource_value = resource_noise.get([x as f64 * RESOURCE_NOISE_SCALE, y as f64 * RESOURCE_NOISE_SCALE]);
-                
-                // Calculate resource amount based on noise value (more extreme = more resources)
-                let amount = MIN_RESOURCE_AMOUNT + 
-                    (((resource_value.abs() * 2.0).min(1.0)) * (MAX_RESOURCE_AMOUNT - MIN_RESOURCE_AMOUNT) as f64) as u32;
-                
-                // Determine tile type
-                let tile = if obstacle_value > OBSTACLE_THRESHOLD {
-                    Tile::Obstacle
-                } else if resource_value < ENERGY_THRESHOLD {
-                    Tile::Energy(amount)
-                } else if resource_value < MINERAL_THRESHOLD {
-                    Tile::Mineral(amount)
-                } else if resource_value < SCIENTIFIC_THRESHOLD {
-                    Tile::ScientificPoint(amount)
-                } else {
-                    Tile::Empty
-                };
-                
-                tiles.push(tile);
+/// Creates a new map with the given dimensions and seed.
+pub fn new(width: u32, height: u32, seed: u64) -> Self {
+    let mut tiles = vec![Tile::Empty; (width * height) as usize];
+    let mut rng = rand::rngs::StdRng::seed_from_u64(seed);
+    
+    // Generate obstacles using noise
+    let obstacle_noise = Value::new(seed as u32);
+    for y in 0..height {
+        for x in 0..width {
+            let noise_value = obstacle_noise.get([x as f64 * NOISE_SCALE, y as f64 * NOISE_SCALE]);
+            if noise_value > OBSTACLE_THRESHOLD {
+                let index = (y * width + x) as usize;
+                tiles[index] = Tile::Obstacle;
             }
         }
-        
-        Map {
-            width,
-            height,
-            tiles,
-            seed,
+    }
+    
+    // Function to find a valid position (that isn't an obstacle)
+    let find_valid_position = |tiles: &Vec<Tile>, width: u32, rng: &mut rand::rngs::StdRng| -> Option<(u32, u32)> {
+        for _ in 0..100 { // Try 100 times to find a valid position
+            let x = rng.gen_range(0..width);
+            let y = rng.gen_range(0..height);
+            let index = (y * width + x) as usize;
+            if let Tile::Empty = tiles[index] {
+                return Some((x, y));
+            }
+        }
+        None
+    };
+    
+    // Generate Energy Bases
+    let energy_base_count = rng.gen_range(BASE_COUNT_MIN..=BASE_COUNT_MAX);
+    for _ in 0..energy_base_count {
+        if let Some((x, y)) = find_valid_position(&tiles, width, &mut rng) {
+            let amount = rng.gen_range(BASE_AMOUNT_MIN..=BASE_AMOUNT_MAX);
+            let index = (y * width + x) as usize;
+            tiles[index] = Tile::Energy(Energy { amount, is_base: true });
         }
     }
+    
+    // Generate Mineral Bases
+    let mineral_base_count = rng.gen_range(BASE_COUNT_MIN..=BASE_COUNT_MAX);
+    for _ in 0..mineral_base_count {
+        if let Some((x, y)) = find_valid_position(&tiles, width, &mut rng) {
+            let amount = rng.gen_range(BASE_AMOUNT_MIN..=BASE_AMOUNT_MAX);
+            let index = (y * width + x) as usize;
+            tiles[index] = Tile::Mineral(Mineral { amount, is_base: true });
+        }
+    }
+    
+    // Generate Scientific Points
+    let science_base_count = rng.gen_range(BASE_COUNT_MIN..=BASE_COUNT_MAX);
+    for _ in 0..science_base_count {
+        if let Some((x, y)) = find_valid_position(&tiles, width, &mut rng) {
+            let value = rng.gen_range(BASE_AMOUNT_MIN..=BASE_AMOUNT_MAX);
+            let index = (y * width + x) as usize;
+            tiles[index] = Tile::ScientificPoint(ScientificPoint { value, is_base: true });
+        }
+    }
+    
+    Map {
+        width,
+        height,
+        tiles,
+        seed,
+    }
+}
 
     /// Retrieves a tile at the given coordinates (read-only).
     pub fn get_tile(&self, x: u32, y: u32) -> Option<&Tile> {
@@ -98,72 +143,54 @@ impl Map {
         matches!(self.get_tile(x, y), Some(Tile::Obstacle))
     }
     
-    /// Attempts to consume an energy resource at the given position.
-    /// Returns the amount consumed or None if no energy resource exists there.
-    pub fn consume_energy(&mut self, x: u32, y: u32, amount: u32) -> Option<u32> {
-        self.consume_resource(x, y, |tile| {
-            if let Tile::Energy(energy_amount) = tile {
-                Some(*energy_amount)
-            } else {
-                None
-            }
-        }, amount)
-    }
-    
-    /// Attempts to consume a mineral resource at the given position.
-    /// Returns the amount consumed or None if no mineral resource exists there.
-    pub fn consume_mineral(&mut self, x: u32, y: u32, amount: u32) -> Option<u32> {
-        self.consume_resource(x, y, |tile| {
-            if let Tile::Mineral(mineral_amount) = tile {
-                Some(*mineral_amount)
-            } else {
-                None
-            }
-        }, amount)
-    }
-    
-    /// Returns true if the given position contains a scientific interest point.
+    /// Checks whether the given coordinates contain a scientific interest point.
     pub fn has_scientific_point(&self, x: u32, y: u32) -> bool {
         matches!(self.get_tile(x, y), Some(Tile::ScientificPoint(_)))
     }
     
-    /// Extracts data from a scientific point. Returns the value or None if no scientific point exists there.
-    pub fn extract_scientific_data(&mut self, x: u32, y: u32) -> Option<u32> {
+    /// Attempts to consume an energy resource at the given position.
+    /// Returns the amount consumed or None if no energy resource exists there.
+    pub fn consume_energy(&mut self, x: u32, y: u32, amount: u32) -> Option<u32> {
         if let Some(tile) = self.get_tile_mut(x, y) {
-            if let Tile::ScientificPoint(value) = *tile {
-                *tile = Tile::Empty;
-                return Some(value);
+            if let Tile::Energy(energy) = tile {
+                let consumed = amount.min(energy.amount);
+                energy.amount -= consumed;
+                
+                if energy.amount == 0 {
+                    *tile = Tile::Empty;
+                }
+                
+                return Some(consumed);
             }
         }
         None
     }
     
-    // Helper method for resource consumption
-    fn consume_resource<F>(&mut self, x: u32, y: u32, extractor: F, amount: u32) -> Option<u32>
-    where
-        F: Fn(&Tile) -> Option<u32>,
-    {
-        if let Some(tile) = self.get_tile(x, y) {
-            if let Some(available) = extractor(tile) {
-                let consumed = amount.min(available);
-                if let Some(tile_mut) = self.get_tile_mut(x, y) {
-                    match *tile_mut {
-                        Tile::Energy(ref mut energy_amount) => {
-                            *energy_amount -= consumed;
-                            if *energy_amount == 0 {
-                                *tile_mut = Tile::Empty;
-                            }
-                        },
-                        Tile::Mineral(ref mut mineral_amount) => {
-                            *mineral_amount -= consumed;
-                            if *mineral_amount == 0 {
-                                *tile_mut = Tile::Empty;
-                            }
-                        },
-                        _ => return None,
-                    }
-                    return Some(consumed);
+    /// Attempts to consume a mineral resource at the given position.
+    /// Returns the amount consumed or None if no mineral resource exists there.
+    pub fn consume_mineral(&mut self, x: u32, y: u32, amount: u32) -> Option<u32> {
+        if let Some(tile) = self.get_tile_mut(x, y) {
+            if let Tile::Mineral(mineral) = tile {
+                let consumed = amount.min(mineral.amount);
+                mineral.amount -= consumed;
+                
+                if mineral.amount == 0 {
+                    *tile = Tile::Empty;
                 }
+                
+                return Some(consumed);
+            }
+        }
+        None
+    }
+    
+    /// Extracts data from a scientific point. Returns the value or None if no scientific point exists there.
+    pub fn extract_scientific_data(&mut self, x: u32, y: u32) -> Option<u32> {
+        if let Some(tile) = self.get_tile_mut(x, y) {
+            if let Tile::ScientificPoint(point) = tile {
+                let value = point.value;
+                *tile = Tile::Empty;
+                return Some(value);
             }
         }
         None
@@ -185,6 +212,41 @@ impl Map {
         }
         
         (energy_count, mineral_count, scientific_count)
+    }
+
+    pub fn count_resource_bases(&self) -> (u32, u32, u32) {
+        let mut energy_bases = 0;
+        let mut mineral_bases = 0;
+        let mut scientific_bases = 0;
+        
+        for tile in &self.tiles {
+            match tile {
+                Tile::Energy(energy) if energy.is_base => energy_bases += 1,
+                Tile::Mineral(mineral) if mineral.is_base => mineral_bases += 1,
+                Tile::ScientificPoint(point) if point.is_base => scientific_bases += 1,
+                _ => {}
+            }
+        }
+        
+        (energy_bases, mineral_bases, scientific_bases)
+    }
+
+    /// Calculate the total amount of each resource type on the map
+    pub fn calculate_total_resources(&self) -> (u32, u32, u32) {
+        let mut energy_total = 0;
+        let mut mineral_total = 0;
+        let mut scientific_total = 0;
+
+        for tile in &self.tiles {
+            match tile {
+                Tile::Energy(energy) => energy_total += energy.amount,
+                Tile::Mineral(mineral) => mineral_total += mineral.amount,
+                Tile::ScientificPoint(point) => scientific_total += point.value,
+                _ => {}
+            }
+        }
+
+        (energy_total, mineral_total, scientific_total)
     }
 }
 
@@ -282,8 +344,8 @@ mod tests {
         
         // Test energy consumption
         if let Some((x, y)) = energy_pos {
-            let original_amount = if let Some(Tile::Energy(amount)) = map.get_tile(x, y) {
-                *amount
+            let original_amount = if let Some(Tile::Energy(energy)) = map.get_tile(x, y) {
+                energy.amount
             } else {
                 0
             };
@@ -292,8 +354,8 @@ mod tests {
             assert!(consumed > 0, "Should consume some energy");
             assert!(consumed <= 10, "Should not consume more than requested");
             
-            let remaining = if let Some(Tile::Energy(amount)) = map.get_tile(x, y) {
-                *amount
+            let remaining = if let Some(Tile::Energy(energy)) = map.get_tile(x, y) {
+                energy.amount
             } else {
                 0
             };
@@ -303,8 +365,8 @@ mod tests {
         
         // Test mineral consumption
         if let Some((x, y)) = mineral_pos {
-            let original_amount = if let Some(Tile::Mineral(amount)) = map.get_tile(x, y) {
-                *amount
+            let original_amount = if let Some(Tile::Mineral(mineral)) = map.get_tile(x, y) {
+                mineral.amount
             } else {
                 0
             };
