@@ -1,4 +1,1 @@
-# astro-robots
-
-Ziad LAHROUNI (ziadlahrouni.com)
-Sara Bevilacqua
+# 🚀 EREEA: Robot Swarm Exploration Simulation
