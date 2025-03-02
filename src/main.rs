@@ -15,8 +15,10 @@ use ratatui::{
 use std::{io, time::Duration};
 
 mod map;
+mod robot; // Import the robot module
 
 use map::map_widget::MapWidget;
+use robot::{Robot, HardwareModule, Position}; // Import Robot and related types
 
 // Define fixed dimensions for the simulation map
 const MAP_WIDTH: u32 = 200;
@@ -33,7 +35,24 @@ fn main() -> Result<()> {
     // Initialize map with random seed
     let random_seed = rand::random::<u64>();
     let mut map = map::Map::new(MAP_WIDTH, MAP_HEIGHT, random_seed);
-    
+
+    // Initialize robots with specific positions and hardware modules
+    let mut robots = vec![
+        Robot::new(
+            Position { x: 10, y: 10 },
+            vec![HardwareModule::TerrainScanner {
+                efficiency: 0.8,
+                range: 15,
+            }],
+        ),
+        Robot::new(
+            Position { x: 20, y: 20 },
+            vec![HardwareModule::DeepDrill {
+                mining_speed: 1.5,
+            }],
+        ),
+    ];
+
     // Main rendering loop
     loop {
         terminal.draw(|f| {
@@ -45,12 +64,12 @@ fn main() -> Result<()> {
                     Constraint::Length(4), // Increased to accommodate additional info line
                 ].as_ref())
                 .split(f.size());
-            
+
             // Render map section with border
             let map_block = Block::default()
-                .title("Robots swarm")
+                .title("Robots Swarm")
                 .borders(Borders::ALL);
-            
+
             let map_widget = MapWidget::new(&map);
             f.render_widget(map_block.clone(), chunks[0]);
             f.render_widget(map_widget, chunks[0].inner(&Default::default()));
@@ -112,10 +131,16 @@ fn main() -> Result<()> {
                     KeyCode::Char('r') => {
                         let random_seed = rand::random::<u64>();
                         map = map::Map::new(MAP_WIDTH, MAP_HEIGHT, random_seed);
+                        robots.iter_mut().for_each(|robot| robot.start_exploring(Position { x: 0, y: 0 }));
                     }
                     _ => {}
                 }
             }
+        }
+
+        // Update robots' positions
+        for robot in &mut robots {
+            robot.update(&map);
         }
     }
 
