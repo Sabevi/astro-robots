@@ -48,7 +48,8 @@ pub enum Tile {
     Obstacle,                       
     Energy(Energy),       
     Mineral(Mineral),      
-    ScientificPoint(ScientificPoint), 
+    ScientificPoint(ScientificPoint),
+    Station,
 }
 
 // ========================= MAP IMPLEMENTATION ========================= //
@@ -142,12 +143,12 @@ pub fn new(width: u32, height: u32, seed: u64) -> Self {
     pub fn is_obstacle(&self, x: u32, y: u32) -> bool {
         matches!(self.get_tile(x, y), Some(Tile::Obstacle))
     }
-    
+
     /// Checks whether the given coordinates contain a scientific interest point.
     pub fn has_scientific_point(&self, x: u32, y: u32) -> bool {
         matches!(self.get_tile(x, y), Some(Tile::ScientificPoint(_)))
     }
-    
+
     /// Attempts to consume an energy resource at the given position.
     /// Returns the amount consumed or None if no energy resource exists there.
     pub fn consume_energy(&mut self, x: u32, y: u32, amount: u32) -> Option<u32> {
@@ -155,17 +156,17 @@ pub fn new(width: u32, height: u32, seed: u64) -> Self {
             if let Tile::Energy(energy) = tile {
                 let consumed = amount.min(energy.amount);
                 energy.amount -= consumed;
-                
+
                 if energy.amount == 0 {
                     *tile = Tile::Empty;
                 }
-                
+
                 return Some(consumed);
             }
         }
         None
     }
-    
+
     /// Attempts to consume a mineral resource at the given position.
     /// Returns the amount consumed or None if no mineral resource exists there.
     pub fn consume_mineral(&mut self, x: u32, y: u32, amount: u32) -> Option<u32> {
@@ -173,17 +174,17 @@ pub fn new(width: u32, height: u32, seed: u64) -> Self {
             if let Tile::Mineral(mineral) = tile {
                 let consumed = amount.min(mineral.amount);
                 mineral.amount -= consumed;
-                
+
                 if mineral.amount == 0 {
                     *tile = Tile::Empty;
                 }
-                
+
                 return Some(consumed);
             }
         }
         None
     }
-    
+
     /// Extracts data from a scientific point. Returns the value or None if no scientific point exists there.
     pub fn extract_scientific_data(&mut self, x: u32, y: u32) -> Option<u32> {
         if let Some(tile) = self.get_tile_mut(x, y) {
@@ -201,7 +202,7 @@ pub fn new(width: u32, height: u32, seed: u64) -> Self {
         let mut energy_count = 0;
         let mut mineral_count = 0;
         let mut scientific_count = 0;
-        
+
         for tile in &self.tiles {
             match tile {
                 Tile::Energy(_) => energy_count += 1,
@@ -210,7 +211,7 @@ pub fn new(width: u32, height: u32, seed: u64) -> Self {
                 _ => {}
             }
         }
-        
+
         (energy_count, mineral_count, scientific_count)
     }
 
@@ -218,7 +219,7 @@ pub fn new(width: u32, height: u32, seed: u64) -> Self {
         let mut energy_bases = 0;
         let mut mineral_bases = 0;
         let mut scientific_bases = 0;
-        
+
         for tile in &self.tiles {
             match tile {
                 Tile::Energy(energy) if energy.is_base => energy_bases += 1,
@@ -227,7 +228,7 @@ pub fn new(width: u32, height: u32, seed: u64) -> Self {
                 _ => {}
             }
         }
-        
+
         (energy_bases, mineral_bases, scientific_bases)
     }
 
