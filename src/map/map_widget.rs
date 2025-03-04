@@ -50,11 +50,11 @@ impl Widget for MapWidget<'_> {
                         Tile::Obstacle => {
                             cell.set_char('#')
                                 .set_style(Style::default().fg(Color::Red));
-                        },
+                        }
                         Tile::Empty => {
                             cell.set_char('.')
                                 .set_style(Style::default().fg(Color::Gray));
-                        },
+                        }
                         Tile::Energy(energy) => {
                             if energy.is_base {
                                 cell.set_char('⚡')
@@ -67,7 +67,7 @@ impl Widget for MapWidget<'_> {
                                     .set_style(Style::default()
                                         .fg(Color::Rgb(255, intensity, 0)));
                             }
-                        },
+                        }
                         Tile::Mineral(mineral) => {
                             if mineral.is_base {
                                 cell.set_char('♦')
@@ -80,7 +80,7 @@ impl Widget for MapWidget<'_> {
                                     .set_style(Style::default()
                                         .fg(Color::Rgb(0, intensity, 255)));
                             }
-                        },
+                        }
                         Tile::ScientificPoint(point) => {
                             if point.is_base {
                                 cell.set_char('★')
@@ -93,7 +93,12 @@ impl Widget for MapWidget<'_> {
                                     .set_style(Style::default()
                                         .fg(Color::Rgb(0, 255, intensity)));
                             }
-                        },
+                        }
+                        Tile::Station => {
+                            buf.get_mut(area.x + x, area.y + y)
+                                .set_char('🏠') 
+                                .set_style(Style::default().fg(Color::Magenta).bg(Color::Black));
+                        }
                     }
                 }
             }
@@ -104,7 +109,7 @@ impl Widget for MapWidget<'_> {
             // Clamp robot positions to map boundaries
             let x = robot.position.x.clamp(0, self.map.width - 1) as u16;
             let y = robot.position.y.clamp(0, self.map.height - 1) as u16;
-            
+
             // Convert to buffer coordinates
             let buf_x = render_area.x + x;
             let buf_y = render_area.y + y;
@@ -122,7 +127,8 @@ impl Widget for MapWidget<'_> {
 // Fonction utilitaire pour calculer l'intensité de la couleur basée sur la quantité
 fn calculate_color_intensity(amount: u32) -> u8 {
     // Normaliser la quantité entre MIN_AMOUNT et MAX_AMOUNT
-    let normalized = (amount.saturating_sub(MIN_AMOUNT)) as f32 / (MAX_AMOUNT.saturating_sub(MIN_AMOUNT)) as f32;
+    let normalized =
+        (amount.saturating_sub(MIN_AMOUNT)) as f32 / (MAX_AMOUNT.saturating_sub(MIN_AMOUNT)) as f32;
     // Convertir en intensité de couleur (100-255 pour rester visible)
     (100.0 + normalized.clamp(0.0, 1.0) * 155.0) as u8
 }

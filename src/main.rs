@@ -25,6 +25,9 @@ mod robot;
 use map::map_widget::MapWidget;
 use robot::{HardwareModule, Position, Robot};
 
+mod station;
+use station::{RobotType, Station};
+
 const MAP_WIDTH: u32 = 200;
 const MAP_HEIGHT: u32 = 100;
 
@@ -36,11 +39,25 @@ fn main() -> Result<()> {
     let mut terminal = Terminal::new(backend)?;
 
     let random_seed = rand::random::<u64>();
-    let map = Arc::new(Mutex::new(map::Map::new(MAP_WIDTH, MAP_HEIGHT, random_seed)));
+
+    let station_position = Position {
+        x: MAP_WIDTH / 2,
+        y: MAP_HEIGHT / 2,
+    };
+    let mut station = Station::new(station_position);
+
+    let map = Arc::new(Mutex::new(map::Map::new(
+        MAP_WIDTH,
+        MAP_HEIGHT,
+        random_seed,
+    )));
     let robots = Arc::new(Mutex::new(vec![
         Robot::new(
             Position { x: 10, y: 10 },
-            vec![HardwareModule::TerrainScanner { efficiency: 0.8, range: 15 }],
+            vec![HardwareModule::TerrainScanner {
+                efficiency: 0.8,
+                range: 15,
+            }],
         ),
         Robot::new(
             Position { x: 20, y: 20 },
@@ -85,8 +102,9 @@ fn main() -> Result<()> {
 
             // Render info panel
             let (energy_bases, mineral_bases, scientific_bases) = map_lock.count_resource_bases();
-            let (energy_total, mineral_total, scientific_total) = map_lock.calculate_total_resources();
-            
+            let (energy_total, mineral_total, scientific_total) =
+                map_lock.calculate_total_resources();
+
             let info_text = vec![
                 Line::from(vec![
                     Span::raw("Press "),
@@ -103,6 +121,17 @@ fn main() -> Result<()> {
                     Span::raw(format!(" {mineral_bases} ({mineral_total}) | ")),
                     Span::styled("★", Style::default().fg(Color::Green)),
                     Span::raw(format!(" {scientific_bases} ({scientific_total})")),
+                    Span::raw("): "),
+                    Span::styled(
+                        scientific_bases.to_string(),
+                        Style::default().fg(Color::Green),
+                    ),
+                    Span::raw(" (Total: "),
+                    Span::styled(
+                        scientific_total.to_string(),
+                        Style::default().fg(Color::Green),
+                    ),
+                    Span::raw(")"),
                 ]),
             ];
 
@@ -111,6 +140,9 @@ fn main() -> Result<()> {
             f.render_widget(info, chunks[1]);
         })?;
 
+        station.update(&map);
+
+        // Handle user input
         if event::poll(Duration::from_millis(16))? {
             if let Event::Key(key) = event::read()? {
                 match key.code {
@@ -118,7 +150,7 @@ fn main() -> Result<()> {
                     KeyCode::Char('r') => {
                         let mut map_lock = map.lock().unwrap();
                         let mut robots_lock = robots.lock().unwrap();
-                        
+
                         *map_lock = map::Map::new(MAP_WIDTH, MAP_HEIGHT, rand::random());
                         robots_lock.iter_mut().for_each(|robot| {
                             robot.position = Position { x: 0, y: 0 };
