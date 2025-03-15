@@ -1,3 +1,4 @@
+#[allow(dead_code)]
 use crate::robot::Resources;
 use serde::{Deserialize, Serialize};
 

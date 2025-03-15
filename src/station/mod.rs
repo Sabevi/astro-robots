@@ -1,8 +1,9 @@
+#[allow(dead_code)]
 pub mod production;
 pub mod resources;
 pub mod sync;
 
-use crate::map::Map;
+use crate::map::{Map, Tile};
 use crate::robot::{HardwareModule, Position, Resources, Robot};
 use serde::{Deserialize, Serialize};
 
@@ -22,6 +23,34 @@ pub struct Station {
     pub production_costs: ProductionCosts,
 }
 
+fn find_empty_position(map: &Map) -> Position {
+    for y in 0..map.height {
+        for x in 0..map.width {
+            if let Some(Tile::Empty) = map.get_tile(x, y) {
+                return Position { x, y };
+            }
+        }
+    }
+    Position { x: 10, y: 10 } // Fallback si tout est plein
+}
+
+fn clear_area_around_station(map: &mut Map, station_pos: &Position) {
+    let radius = 3; // Rayon de nettoyage pour éviter que la station soit bloquée
+
+    for dy in -radius..=radius {
+        for dx in -radius..=radius {
+            let x = (station_pos.x as i32 + dx).max(0) as u32;
+            let y = (station_pos.y as i32 + dy).max(0) as u32;
+
+            if x < map.width && y < map.height {
+                if let Some(tile) = map.get_tile_mut(x, y) {
+                    *tile = Tile::Empty; // Remplace tout par du vide
+                }
+            }
+        }
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ProductionCosts {
     /// Coût en énergie et minéraux pour un robot explorateur
@@ -36,17 +65,35 @@ pub struct ProductionCosts {
 
 impl Station {
     /// Crée une nouvelle station à la position donnée
-    pub fn new(position: Position) -> Self {
+    pub fn new(global_map: &mut Map) -> Self {
+        let preferred_pos = Position { x: 10, y: 10 };
+
+        // Vérifier si la position (10,10) est disponible
+        let pos = if let Some(Tile::Empty) = global_map.get_tile(preferred_pos.x, preferred_pos.y) {
+            preferred_pos
+        } else {
+            find_empty_position(global_map) // Trouver une place libre si (10,10) est bloqué
+        };
+
+        // Nettoyer la zone autour AVANT de placer la station
+        clear_area_around_station(global_map, &pos);
+
+        // Placer la station après nettoyage
+        if let Some(tile) = global_map.get_tile_mut(pos.x, pos.y) {
+            *tile = Tile::Station;
+        }
+
+        // Retourner l'instance de la station
         Self {
-            position,
+            position: pos,
             resources: Resources {
-                energy: 1000, // Ressources initiales
+                energy: 1000,
                 minerals: 500,
                 scientific_data: 0,
             },
             known_map: None,
             robots: Vec::new(),
-            max_robots: 10, // Limite initiale
+            max_robots: 10,
             production_costs: ProductionCosts {
                 explorer: (200, 100),
                 energy_collector: (150, 150),

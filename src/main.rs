@@ -1,3 +1,4 @@
+#[allow(dead_code)]
 use anyhow::Result;
 use crossterm::{
     event::{self, Event, KeyCode},
@@ -39,12 +40,7 @@ fn main() -> Result<()> {
     let random_seed = rand::random::<u64>();
     let mut map = map::Map::new(MAP_WIDTH, MAP_HEIGHT, random_seed);
 
-    // Initialize station
-    let station_position = Position {
-        x: MAP_WIDTH / 2,
-        y: MAP_HEIGHT / 2,
-    };
-    let mut station = Station::new(station_position);
+    let mut station = Station::new(&mut map);
 
     // Initialize robots with specific positions and hardware modules
     let mut robots = vec![
@@ -78,7 +74,7 @@ fn main() -> Result<()> {
                 .constraints(
                     [
                         Constraint::Min(3),
-                        Constraint::Length(4), // Increased to accommodate additional info line
+                        Constraint::Length(5), // Increased to accommodate additional info line
                     ]
                     .as_ref(),
                 )
@@ -135,6 +131,24 @@ fn main() -> Result<()> {
                     ),
                     Span::raw(")"),
                 ]),
+                Line::from(vec![
+                    Span::raw("📦 Station - "),
+                    Span::raw("Energy: "),
+                    Span::styled(
+                        station.resources.energy.to_string(),
+                        Style::default().fg(Color::Yellow),
+                    ),
+                    Span::raw(" | Minerals: "),
+                    Span::styled(
+                        station.resources.minerals.to_string(),
+                        Style::default().fg(Color::Blue),
+                    ),
+                    Span::raw(" | Scientific Data: "),
+                    Span::styled(
+                        station.resources.scientific_data.to_string(),
+                        Style::default().fg(Color::Green),
+                    ),
+                ]),
             ];
 
             let info = Paragraph::new(info_text)
@@ -144,8 +158,6 @@ fn main() -> Result<()> {
             f.render_widget(info, chunks[1]);
         })?;
 
-        station.update(&map);
-
         // Handle user input
         if event::poll(Duration::from_millis(16))? {
             if let Event::Key(key) = event::read()? {
@@ -154,6 +166,8 @@ fn main() -> Result<()> {
                     KeyCode::Char('r') => {
                         let random_seed = rand::random::<u64>();
                         map = map::Map::new(MAP_WIDTH, MAP_HEIGHT, random_seed);
+                        station = Station::new(&mut map);
+
                         robots
                             .iter_mut()
                             .for_each(|robot| robot.start_exploring(Position { x: 0, y: 0 }));

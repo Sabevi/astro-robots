@@ -96,8 +96,8 @@ impl Widget for MapWidget<'_> {
                             }
                         }
                         Tile::Station => {
-                            buf.get_mut(area.x + x, area.y + y)
-                                .set_char('🏠') 
+                            buf.get_mut(area.x + x + x_offset, area.y + y + y_offset)
+                                .set_char('🏠')
                                 .set_style(Style::default().fg(Color::Magenta).bg(Color::Black));
                         }
                     }
@@ -115,3 +115,4 @@ fn calculate_color_intensity(amount: u32) -> u8 {
     // Convertir en intensité de couleur (100-255 pour rester visible)
     (100.0 + normalized.clamp(0.0, 1.0) * 155.0) as u8
 }
+
