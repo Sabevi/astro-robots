@@ -1,3 +1,4 @@
+#[allow(dead_code)]
 use crate::map::{Map, Tile};
 use crate::robot::Position;
 use serde::{Deserialize, Serialize};

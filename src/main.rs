@@ -1,3 +1,4 @@
+#[allow(dead_code)]
 use anyhow::Result;
 use crossterm::{
     event::{self, Event, KeyCode},
@@ -40,11 +41,7 @@ fn main() -> Result<()> {
 
     let random_seed = rand::random::<u64>();
 
-    let station_position = Position {
-        x: MAP_WIDTH / 2,
-        y: MAP_HEIGHT / 2,
-    };
-    let mut station = Station::new(station_position);
+    let mut station = Station::new(&mut map);
 
     let map = Arc::new(Mutex::new(map::Map::new(
         MAP_WIDTH,
@@ -133,14 +130,30 @@ fn main() -> Result<()> {
                     ),
                     Span::raw(")"),
                 ]),
+                Line::from(vec![
+                    Span::raw("📦 Station - "),
+                    Span::raw("Energy: "),
+                    Span::styled(
+                        station.resources.energy.to_string(),
+                        Style::default().fg(Color::Yellow),
+                    ),
+                    Span::raw(" | Minerals: "),
+                    Span::styled(
+                        station.resources.minerals.to_string(),
+                        Style::default().fg(Color::Blue),
+                    ),
+                    Span::raw(" | Scientific Data: "),
+                    Span::styled(
+                        station.resources.scientific_data.to_string(),
+                        Style::default().fg(Color::Green),
+                    ),
+                ]),
             ];
 
             let info_block = Block::default().title("Commands").borders(Borders::ALL);
             let info = Paragraph::new(info_text).block(info_block);
             f.render_widget(info, chunks[1]);
         })?;
-
-        station.update(&map);
 
         // Handle user input
         if event::poll(Duration::from_millis(16))? {
