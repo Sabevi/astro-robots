@@ -5,7 +5,10 @@ use ratatui::{
     widgets::Widget,
 };
 
-use crate::{map::{Map, Tile}, robot::Robot};
+use crate::{
+    map::{Map, Tile},
+    robot::Robot,
+};
 
 pub struct MapWidget<'a> {
     map: &'a Map,
@@ -57,46 +60,39 @@ impl Widget for MapWidget<'_> {
                         }
                         Tile::Energy(energy) => {
                             if energy.is_base {
-                                cell.set_char('⚡')
-                                    .set_style(Style::default()
-                                        .fg(Color::Yellow)
-                                        .bg(Color::DarkGray));
+                                cell.set_char('⚡').set_style(
+                                    Style::default().fg(Color::Yellow).bg(Color::DarkGray),
+                                );
                             } else {
                                 let intensity = calculate_color_intensity(energy.amount);
                                 cell.set_char('⚡')
-                                    .set_style(Style::default()
-                                        .fg(Color::Rgb(255, intensity, 0)));
+                                    .set_style(Style::default().fg(Color::Rgb(255, intensity, 0)));
                             }
                         }
                         Tile::Mineral(mineral) => {
                             if mineral.is_base {
-                                cell.set_char('♦')
-                                    .set_style(Style::default()
-                                        .fg(Color::Blue)
-                                        .bg(Color::DarkGray));
+                                cell.set_char('♦').set_style(
+                                    Style::default().fg(Color::Blue).bg(Color::DarkGray),
+                                );
                             } else {
                                 let intensity = calculate_color_intensity(mineral.amount);
                                 cell.set_char('♦')
-                                    .set_style(Style::default()
-                                        .fg(Color::Rgb(0, intensity, 255)));
+                                    .set_style(Style::default().fg(Color::Rgb(0, intensity, 255)));
                             }
                         }
                         Tile::ScientificPoint(point) => {
                             if point.is_base {
-                                cell.set_char('★')
-                                    .set_style(Style::default()
-                                        .fg(Color::Green)
-                                        .bg(Color::DarkGray));
+                                cell.set_char('★').set_style(
+                                    Style::default().fg(Color::Green).bg(Color::DarkGray),
+                                );
                             } else {
                                 let intensity = calculate_color_intensity(point.value);
                                 cell.set_char('★')
-                                    .set_style(Style::default()
-                                        .fg(Color::Rgb(0, 255, intensity)));
+                                    .set_style(Style::default().fg(Color::Rgb(0, 255, intensity)));
                             }
                         }
                         Tile::Station => {
-                            buf.get_mut(area.x + x + x_offset, area.y + y + y_offset)
-                                .set_char('🏠')
+                            cell.set_char('🏠')
                                 .set_style(Style::default().fg(Color::Magenta).bg(Color::Black));
                         }
                     }
@@ -132,4 +128,3 @@ fn calculate_color_intensity(amount: u32) -> u8 {
     // Convertir en intensité de couleur (100-255 pour rester visible)
     (100.0 + normalized.clamp(0.0, 1.0) * 155.0) as u8
 }
-

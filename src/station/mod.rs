@@ -23,15 +23,33 @@ pub struct Station {
     pub production_costs: ProductionCosts,
 }
 
-fn find_empty_position(map: &Map) -> Position {
-    for y in 0..map.height {
-        for x in 0..map.width {
-            if let Some(Tile::Empty) = map.get_tile(x, y) {
-                return Position { x, y };
+fn find_nearby_empty_position(map: &Map, center: Position) -> Position {
+    let max_radius = map.width.max(map.height) as i32; // pour éviter les boucles infinies
+    for radius in 0..max_radius {
+        for dy in -radius..=radius {
+            for dx in -radius..=radius {
+                // Bord de la couronne uniquement
+                if dx.abs() != radius && dy.abs() != radius {
+                    continue;
+                }
+
+                let x = center.x as i32 + dx;
+                let y = center.y as i32 + dy;
+
+                if x >= 0 && y >= 0 && (x as u32) < map.width && (y as u32) < map.height {
+                    if let Some(Tile::Empty) = map.get_tile(x as u32, y as u32) {
+                        return Position {
+                            x: x as u32,
+                            y: y as u32,
+                        };
+                    }
+                }
             }
         }
     }
-    Position { x: 10, y: 10 } // Fallback si tout est plein
+
+    // Fallback si tout est bloqué
+    Position { x: 0, y: 0 }
 }
 
 fn clear_area_around_station(map: &mut Map, station_pos: &Position) {
@@ -68,12 +86,7 @@ impl Station {
     pub fn new(global_map: &mut Map) -> Self {
         let preferred_pos = Position { x: 10, y: 10 };
 
-        // Vérifier si la position (10,10) est disponible
-        let pos = if let Some(Tile::Empty) = global_map.get_tile(preferred_pos.x, preferred_pos.y) {
-            preferred_pos
-        } else {
-            find_empty_position(global_map) // Trouver une place libre si (10,10) est bloqué
-        };
+        let pos = find_nearby_empty_position(global_map, preferred_pos);
 
         // Nettoyer la zone autour AVANT de placer la station
         clear_area_around_station(global_map, &pos);
