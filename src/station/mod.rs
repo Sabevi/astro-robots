@@ -4,8 +4,16 @@ pub mod resources;
 pub mod sync;
 
 use crate::map::{Map, Tile};
+use crate::robot::resources::ResourceType;
 use crate::robot::{HardwareModule, Position, Resources, Robot};
 use serde::{Deserialize, Serialize};
+
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct DiscoveredResources {
+    pub energy_locations: Vec<Position>,
+    pub mineral_locations: Vec<Position>,
+    pub scientific_locations: Vec<Position>,
+}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Station {
@@ -21,6 +29,8 @@ pub struct Station {
     pub max_robots: usize,
     /// Coûts de production pour chaque type de robot
     pub production_costs: ProductionCosts,
+    /// Ressources découvertes
+    pub discovered_resources: DiscoveredResources,
 }
 
 fn find_nearby_empty_position(map: &Map, center: Position) -> Position {
@@ -113,7 +123,9 @@ impl Station {
                 miner: (150, 200),
                 scientist: (250, 150),
             },
+            discovered_resources: DiscoveredResources::default(),
         }
+
     }
 
     /// Met à jour l'état de la station
@@ -250,6 +262,36 @@ impl Station {
                 self.resources.minerals -= mineral_cost;
             }
         }
+    }
+    
+    // Méthode pour signaler une ressource découverte
+    pub fn report_resource_found(&mut self, resource_type: ResourceType, position: Position) {
+        match resource_type {
+            ResourceType::Energy => {
+                if !self.discovered_resources.energy_locations.contains(&position) {
+                    self.discovered_resources.energy_locations.push(position);
+                }
+            },
+            ResourceType::Minerals => {
+                if !self.discovered_resources.mineral_locations.contains(&position) {
+                    self.discovered_resources.mineral_locations.push(position);
+                }
+            },
+            ResourceType::ScientificData => {
+                if !self.discovered_resources.scientific_locations.contains(&position) {
+                    self.discovered_resources.scientific_locations.push(position);
+                }
+            },
+        }
+    }
+    
+    // Récupère le nombre de ressources découvertes
+    pub fn get_discovered_resource_counts(&self) -> (usize, usize, usize) {
+        (
+            self.discovered_resources.energy_locations.len(),
+            self.discovered_resources.mineral_locations.len(),
+            self.discovered_resources.scientific_locations.len(),
+        )
     }
 }
 
