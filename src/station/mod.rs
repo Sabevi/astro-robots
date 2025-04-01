@@ -1,4 +1,5 @@
 #[allow(dead_code)]
+pub mod communication;
 pub mod production;
 pub mod resources;
 pub mod sync;
