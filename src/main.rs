@@ -23,7 +23,7 @@ mod map;
 mod robot;
 
 use map::map_widget::MapWidget;
-use robot::{HardwareModule, Position, Robot};
+use robot::{HardwareModule, Position, Robot, State};
 
 mod station;
 use station::{RobotType, Station};
@@ -66,14 +66,42 @@ fn main() -> Result<()> {
         let running_clone = Arc::clone(&running);
         let robots_clone = Arc::clone(&robots);
         let map_clone = Arc::clone(&map);
-
+        let station_clone = Arc::clone(&station);
+    
         thread::spawn(move || {
             while *running_clone.lock().unwrap() {
                 thread::sleep(Duration::from_millis(100));
                 let mut robots = robots_clone.lock().unwrap();
                 let map = map_clone.lock().unwrap();
+                let mut station = station_clone.lock().unwrap();
+                
                 for robot in robots.iter_mut() {
-                    robot.move_randomly(&map);
+                    match robot.state {
+                        State::Idle => {
+                            // Basculer en mode exploration
+                            robot.explore_map(&map, &mut station);
+                        },
+                        State::Exploring { .. } => {
+                            robot.explore_map(&map, &mut station);
+                        },
+                        State::Returning { .. } => {
+                            if robot.is_at_station(&station) {
+                                // Recharger le robot
+                                robot.energy = 100.0;
+                                // Déposer les ressources
+                                station.collect_robot_resources(robot);
+                                // Retourner en mode exploration
+                                robot.state = State::Idle;
+                            } else {
+                                // Continuer le retour
+                                robot.return_to_station(&station);
+                            }
+                        },
+                        _ => {
+                            // Pour les autres états, comportement par défaut
+                            robot.move_randomly(&map);
+                        }
+                    }
                 }
             }
         });
@@ -83,7 +111,7 @@ fn main() -> Result<()> {
         terminal.draw(|f| {
             let chunks = Layout::default()
                 .direction(Direction::Vertical)
-                .constraints([Constraint::Min(3), Constraint::Length(5)].as_ref())
+                .constraints([Constraint::Min(3), Constraint::Length(6)].as_ref())
                 .split(f.size());
 
             // Get map data once per frame
@@ -102,6 +130,8 @@ fn main() -> Result<()> {
                 map_lock.calculate_total_resources();
 
             let station_lock = station.lock().unwrap();
+
+            let (discovered_energy, discovered_minerals, discovered_science) = station_lock.get_discovered_resource_counts();
 
             let info_text = vec![
                 Line::from(vec![
@@ -137,6 +167,24 @@ fn main() -> Result<()> {
                     Span::raw(" | Scientific Data: "),
                     Span::styled(
                         station_lock.resources.scientific_data.to_string(),
+                        Style::default().fg(Color::Green),
+                    ),
+                ]),
+                Line::from(vec![
+                    Span::raw("🔍 Discovered - "),
+                    Span::raw("Energy: "),
+                    Span::styled(
+                        discovered_energy.to_string(),
+                        Style::default().fg(Color::Yellow),
+                    ),
+                    Span::raw(" | Minerals: "),
+                    Span::styled(
+                        discovered_minerals.to_string(),
+                        Style::default().fg(Color::Blue),
+                    ),
+                    Span::raw(" | Scientific: "),
+                    Span::styled(
+                        discovered_science.to_string(),
                         Style::default().fg(Color::Green),
                     ),
                 ]),
