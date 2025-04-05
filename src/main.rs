@@ -47,19 +47,7 @@ fn main() -> Result<()> {
 
     let station = Arc::new(Mutex::new(Station::new(&mut map.lock().unwrap())));
 
-    let robots = Arc::new(Mutex::new(vec![
-        Robot::new(
-            Position { x: 10, y: 10 },
-            vec![HardwareModule::TerrainScanner {
-                efficiency: 0.8,
-                range: 15,
-            }],
-        ),
-        Robot::new(
-            Position { x: 20, y: 20 },
-            vec![HardwareModule::DeepDrill { mining_speed: 1.5 }],
-        ),
-    ]));
+    let robots: Arc<Mutex<Vec<Robot>>> = Arc::new(Mutex::new(vec![]));
 
     let running = Arc::new(Mutex::new(true));
     {
@@ -67,36 +55,49 @@ fn main() -> Result<()> {
         let robots_clone = Arc::clone(&robots);
         let map_clone = Arc::clone(&map);
         let station_clone = Arc::clone(&station);
-    
+
         thread::spawn(move || {
             while *running_clone.lock().unwrap() {
                 thread::sleep(Duration::from_millis(100));
                 let mut robots = robots_clone.lock().unwrap();
                 let map = map_clone.lock().unwrap();
                 let mut station = station_clone.lock().unwrap();
-                
+
                 for robot in robots.iter_mut() {
                     match robot.state {
                         State::Idle => {
                             // Basculer en mode exploration
                             robot.explore_map(&map, &mut station);
-                        },
+                        }
                         State::Exploring { .. } => {
                             robot.explore_map(&map, &mut station);
-                        },
+                        }
                         State::Returning { .. } => {
                             if robot.is_at_station(&station) {
-                                // Recharger le robot
-                                robot.energy = 100.0;
-                                // Déposer les ressources
+                                // Calculer l'énergie nécessaire pour recharger à 100
+                                let energy_needed = 100.0 - robot.energy;
+
+                                // Vérifier si la station peut fournir cette énergie
+                                let available_energy = station.resources.energy as f32;
+                                let energy_given = energy_needed.min(available_energy);
+
+                                // Recharger le robot partiellement ou totalement
+                                robot.energy += energy_given;
+                                station.resources.energy -= energy_given as u32;
+
+                                // Déposer les ressources collectées
                                 station.collect_robot_resources(robot);
-                                // Retourner en mode exploration
-                                robot.state = State::Idle;
+
+                                // Retourner en mode exploration si assez d'énergie
+                                if robot.energy >= 10.0 {
+                                    robot.state = State::Idle;
+                                }
                             } else {
                                 // Continuer le retour
                                 robot.return_to_station(&station);
                             }
-                        },
+                        }
+
                         _ => {
                             // Pour les autres états, comportement par défaut
                             robot.move_randomly(&map);
@@ -131,7 +132,8 @@ fn main() -> Result<()> {
 
             let station_lock = station.lock().unwrap();
 
-            let (discovered_energy, discovered_minerals, discovered_science) = station_lock.get_discovered_resource_counts();
+            let (discovered_energy, discovered_minerals, discovered_science) =
+                station_lock.get_discovered_resource_counts();
 
             let info_text = vec![
                 Line::from(vec![

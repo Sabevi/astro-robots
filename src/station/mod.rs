@@ -111,22 +111,21 @@ impl Station {
         Self {
             position: pos,
             resources: Resources {
-                energy: 1000,
-                minerals: 500,
+                energy: 10000,
+                minerals: 5000,
                 scientific_data: 0,
             },
             known_map: None,
             robots: Vec::new(),
             max_robots: 10,
             production_costs: ProductionCosts {
-                explorer: (200, 100),
+                explorer: (20, 100),
                 energy_collector: (150, 150),
                 miner: (150, 200),
                 scientist: (250, 150),
             },
             discovered_resources: DiscoveredResources::default(),
         }
-
     }
 
     /// Met à jour l'état de la station
@@ -178,21 +177,25 @@ impl Station {
     /// Crée un nouveau robot si les ressources sont suffisantes
     pub fn create_robot(&mut self, robot_type: RobotType) -> Option<Robot> {
         if self.robots.len() >= self.max_robots {
-            return None; // Capacité maximale atteinte
+            return None;
         }
 
         if !self.can_create_robot(robot_type) {
-            return None; // Ressources insuffisantes
+            return None;
         }
 
-        // Créer les modules en fonction du type de robot
         let modules = self.get_modules_for_robot_type(robot_type);
 
-        // Consommer les ressources
         self.consume_resources_for_robot(robot_type);
 
-        // Créer le robot avec une position proche de la station
-        let robot = Robot::new(
+        let energy_cost = match robot_type {
+            RobotType::Explorer => self.production_costs.explorer.0,
+            RobotType::EnergyCollector => self.production_costs.energy_collector.0,
+            RobotType::Miner => self.production_costs.miner.0,
+            RobotType::Scientist => self.production_costs.scientist.0,
+        };
+
+        let mut robot = Robot::new(
             Position {
                 x: self.position.x.saturating_add(1),
                 y: self.position.y,
@@ -200,9 +203,12 @@ impl Station {
             modules,
         );
 
+        robot.energy = energy_cost as f32;
+
         self.robots.push(robot.clone());
         Some(robot)
     }
+
 
     /// Retourne les modules appropriés pour un type de robot
     fn get_modules_for_robot_type(&self, robot_type: RobotType) -> Vec<HardwareModule> {
@@ -264,28 +270,42 @@ impl Station {
             }
         }
     }
-    
+
     // Méthode pour signaler une ressource découverte
     pub fn report_resource_found(&mut self, resource_type: ResourceType, position: Position) {
         match resource_type {
             ResourceType::Energy => {
-                if !self.discovered_resources.energy_locations.contains(&position) {
+                if !self
+                    .discovered_resources
+                    .energy_locations
+                    .contains(&position)
+                {
                     self.discovered_resources.energy_locations.push(position);
                 }
-            },
+            }
             ResourceType::Minerals => {
-                if !self.discovered_resources.mineral_locations.contains(&position) {
+                if !self
+                    .discovered_resources
+                    .mineral_locations
+                    .contains(&position)
+                {
                     self.discovered_resources.mineral_locations.push(position);
                 }
-            },
+            }
             ResourceType::ScientificData => {
-                if !self.discovered_resources.scientific_locations.contains(&position) {
-                    self.discovered_resources.scientific_locations.push(position);
+                if !self
+                    .discovered_resources
+                    .scientific_locations
+                    .contains(&position)
+                {
+                    self.discovered_resources
+                        .scientific_locations
+                        .push(position);
                 }
-            },
+            }
         }
     }
-    
+
     // Récupère le nombre de ressources découvertes
     pub fn get_discovered_resource_counts(&self) -> (usize, usize, usize) {
         (
