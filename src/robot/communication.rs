@@ -44,7 +44,6 @@ impl RobotCommunication {
         position: Position,
         amount: u32,
     ) {
-        // Mettre à jour l'état local
         match resource_type {
             ResourceType::Energy => {
                 if let Some(current) = self.local_energy_resources.get_mut(&position) {
@@ -67,12 +66,10 @@ impl RobotCommunication {
             }
         }
 
-        // Ajouter à la file d'attente des ressources à signaler
         self.pending_consumed_resources
             .push((resource_type, position, amount));
     }
 
-    /// Signale toutes les ressources consommées en attente à la station
     pub fn report_pending_consumed_resources(&mut self) {
         for (resource_type, position, amount) in self.pending_consumed_resources.drain(..) {
             let message = RobotMessage::ResourceConsumed {
@@ -98,7 +95,6 @@ impl RobotCommunication {
                     mineral_resources,
                     scientific_resources,
                 } => {
-                    // Mettre à jour l'état local avec les données de la station
                     self.local_energy_resources = energy_resources;
                     self.local_mineral_resources = mineral_resources;
                     self.local_scientific_resources = scientific_resources;
@@ -108,7 +104,6 @@ impl RobotCommunication {
                     position,
                     remaining,
                 } => {
-                    // Mettre à jour une ressource spécifique
                     match resource_type {
                         ResourceType::Energy => {
                             if remaining > 0 {
@@ -140,7 +135,6 @@ impl RobotCommunication {
         }
     }
 
-    /// Vérifie si une ressource est disponible selon les connaissances locales du robot
     pub fn is_resource_available(
         &self,
         resource_type: ResourceType,
@@ -166,7 +160,6 @@ impl RobotCommunication {
         }
     }
 
-    /// Obtient l'état actuel des ressources connues localement par le robot
     pub fn get_local_resources_state(
         &self,
     ) -> (
@@ -210,11 +203,9 @@ mod tests {
         
         let robot_comm = RobotCommunication::new(1, station_sender, robot_receiver);
         
-        // Simuler la découverte d'une ressource
         let position = Position { x: 15, y: 15 };
         robot_comm.report_resource_discovered(ResourceType::Energy, position);
         
-        // Vérifier que le message a été envoyé à la station
         if let Ok((robot_id, message)) = station_receiver.recv_timeout(Duration::from_millis(100)) {
             assert_eq!(robot_id, 1);
             match message {
@@ -239,17 +230,13 @@ mod tests {
         
         let mut robot_comm = RobotCommunication::new(1, station_sender, station_receiver);
         
-        // Préremplir l'état local
         let position = Position { x: 25, y: 25 };
         robot_comm.local_energy_resources.insert(position, 500);
         
-        // Enregistrer la consommation d'une ressource
         robot_comm.register_consumed_resource(ResourceType::Energy, position, 100);
         
-        // Vérifier que l'état local a été mis à jour
         assert_eq!(robot_comm.local_energy_resources.get(&position), Some(&400));
         
-        // Vérifier que la consommation est en attente de rapport
         assert_eq!(robot_comm.pending_consumed_resources.len(), 1);
         assert_eq!(robot_comm.pending_consumed_resources[0], 
                    (ResourceType::Energy, position, 100));
@@ -262,20 +249,16 @@ mod tests {
         
         let mut robot_comm = RobotCommunication::new(1, station_sender, robot_receiver);
         
-        // Ajouter quelques ressources consommées en attente
         let position1 = Position { x: 5, y: 5 };
         let position2 = Position { x: 15, y: 15 };
         
         robot_comm.pending_consumed_resources.push((ResourceType::Energy, position1, 50));
         robot_comm.pending_consumed_resources.push((ResourceType::Minerals, position2, 30));
         
-        // Rapporter les ressources consommées
         robot_comm.report_pending_consumed_resources();
         
-        // Vérifier que la file d'attente est vide
         assert_eq!(robot_comm.pending_consumed_resources.len(), 0);
         
-        // Vérifier que les messages ont été envoyés à la station
         for _ in 0..2 {
             if let Ok((robot_id, message)) = station_receiver.recv_timeout(Duration::from_millis(100)) {
                 assert_eq!(robot_id, 1);
@@ -296,7 +279,6 @@ mod tests {
         
         let mut robot_comm = RobotCommunication::new(1, station_sender, robot_receiver);
         
-        // Simuler un message de mise à jour de ressource
         let position = Position { x: 30, y: 30 };
         let _ = robot_sender.send(StationMessage::ResourceUpdate {
             resource_type: ResourceType::Energy,
@@ -304,13 +286,10 @@ mod tests {
             remaining: 800,
         });
         
-        // Traiter le message
         robot_comm.process_station_messages();
         
-        // Vérifier que l'état local a été mis à jour
         assert_eq!(robot_comm.local_energy_resources.get(&position), Some(&800));
         
-        // Simuler une mise à jour complète des ressources
         let mut energy_map = HashMap::new();
         energy_map.insert(position, 750);
         let mineral_map = HashMap::new();
@@ -322,10 +301,8 @@ mod tests {
             scientific_resources: scientific_map.clone(),
         });
         
-        // Traiter le message
         robot_comm.process_station_messages();
         
-        // Vérifier que l'état local a été remplacé
         assert_eq!(robot_comm.local_energy_resources, energy_map);
         assert_eq!(robot_comm.local_mineral_resources, mineral_map);
         assert_eq!(robot_comm.local_scientific_resources, scientific_map);
@@ -338,7 +315,6 @@ mod tests {
         
         let mut robot_comm = RobotCommunication::new(1, station_sender, station_receiver);
         
-        // Préremplir l'état local
         let energy_pos = Position { x: 40, y: 40 };
         let mineral_pos = Position { x: 50, y: 50 };
         let science_pos = Position { x: 60, y: 60 };

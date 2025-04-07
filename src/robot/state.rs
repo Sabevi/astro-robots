@@ -6,7 +6,6 @@ use crate::robot::resources::ResourceType;
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum State {
-    // The robot is not doing anything.
     Idle,
     Exploring {
         target: Position,

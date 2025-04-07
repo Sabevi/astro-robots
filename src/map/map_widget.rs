@@ -26,23 +26,19 @@ const MAX_AMOUNT: u32 = 200;
 
 impl Widget for MapWidget<'_> {
     fn render(self, area: Rect, buf: &mut Buffer) {
-        // Get the actually renderable area (intersection with buffer bounds)
         let render_area = area.intersection(buf.area);
         let _map_width = self.map.width as u16;
         let _map_height = self.map.height as u16;
 
-        // Render map tiles with proper bounds checking
         for y in 0..render_area.height {
             for x in 0..render_area.width {
-                // Convert to map coordinates
+                
                 let map_x = x as u32;
                 let map_y = y as u32;
 
-                // Calculate buffer position
                 let buf_x = render_area.x + x;
                 let buf_y = render_area.y + y;
 
-                // Skip out-of-bounds positions
                 if buf_x >= buf.area.width || buf_y >= buf.area.height {
                     continue;
                 }
@@ -100,17 +96,13 @@ impl Widget for MapWidget<'_> {
             }
         }
 
-        // Render robots with strict bounds checking
         for robot in self.robots {
-            // Clamp robot positions to map boundaries
             let x = robot.position.x.clamp(0, self.map.width - 1) as u16;
             let y = robot.position.y.clamp(0, self.map.height - 1) as u16;
 
-            // Convert to buffer coordinates
             let buf_x = render_area.x + x;
             let buf_y = render_area.y + y;
 
-            // Final safety check before buffer access
             if buf_x < buf.area.width && buf_y < buf.area.height {
                 buf.get_mut(buf_x, buf_y)
                     .set_char('R')
@@ -120,11 +112,8 @@ impl Widget for MapWidget<'_> {
     }
 }
 
-// Fonction utilitaire pour calculer l'intensité de la couleur basée sur la quantité
 fn calculate_color_intensity(amount: u32) -> u8 {
-    // Normaliser la quantité entre MIN_AMOUNT et MAX_AMOUNT
     let normalized =
         (amount.saturating_sub(MIN_AMOUNT)) as f32 / (MAX_AMOUNT.saturating_sub(MIN_AMOUNT)) as f32;
-    // Convertir en intensité de couleur (100-255 pour rester visible)
     (100.0 + normalized.clamp(0.0, 1.0) * 155.0) as u8
 }

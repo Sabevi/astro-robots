@@ -20,17 +20,11 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Robot {
     pub position: Position,
-    /// Current operational state of the robot (e.g., Exploring).
     pub state: State,
-    /// Remaining energy level of the robot.
     pub energy: f32,
-    /// List of hardware modules equipped on this robot.
     pub modules: Vec<HardwareModule>,
-    /// Inventory of resources collected by this robot.
     pub inventory: Resources,
-    /// List of visited positions by the robot.
     pub visited_positions: Vec<Position>,
-
     pub steps_since_last_energy: u32,
 }
 
@@ -46,7 +40,7 @@ impl Robot {
                 minerals: 0,
                 scientific_data: 0,
             },
-            visited_positions: vec![initial_pos], // Initialiser avec la position de départ
+            visited_positions: vec![initial_pos], 
             steps_since_last_energy: 0,
         }
     }
@@ -60,7 +54,6 @@ impl Robot {
         let new_x = self.position.x.saturating_add_signed(dx);
         let new_y = self.position.y.saturating_add_signed(dy);
 
-        // Check if the new position is valid
         if new_x < map.width && new_y < map.height && !map.is_obstacle(new_x, new_y) {
             self.position.x = new_x;
             self.position.y = new_y;
@@ -68,27 +61,22 @@ impl Robot {
     }
     // Explore la carte en recherchant des ressources
     pub fn explore_map(&mut self, map: &Map, station: &mut Station) {
-        // Ne retourner à la station que si l'énergie est vraiment basse
         if self.energy < 10.0 {
-            // Changé de 20.0 à 10.0 pour explorer plus longtemps
             self.state = State::Returning {
                 base_position: station.position,
             };
             return;
         }
 
-        // Incrémenter le compteur de pas et consommer 1.0 énergie tous les 15 déplacements
         self.steps_since_last_energy += 1;
         if self.steps_since_last_energy >= 15 {
             self.energy -= 10.0;
             self.steps_since_last_energy = 0;
         }
 
-        // Calculer la distance de retour et l'énergie nécessaire pour revenir
         let distance_to_base = self.position.distance_to(&station.position);
         let energy_needed_to_return = distance_to_base as f32 * 0.5;
 
-        // Passer en mode retour si l'énergie restante est trop basse pour revenir
         if self.energy <= energy_needed_to_return + 1.0 {
             self.state = State::Returning {
                 base_position: station.position,
@@ -96,11 +84,9 @@ impl Robot {
             return;
         }
 
-        // Obtenir les coordonnées actuelles
         let current_x = self.position.x;
         let current_y = self.position.y;
 
-        // Explorer la tuile actuelle et la signaler à la station
         if let Some(tile) = map.get_tile(current_x, current_y) {
             match tile {
                 Tile::Energy(_) => {
@@ -116,46 +102,38 @@ impl Robot {
             }
         }
 
-        // Déplacement stratégique
         self.strategic_move(map);
 
-        // Enregistrer la position actuelle comme visitée
         if !self.visited_positions.contains(&self.position) {
             self.visited_positions.push(self.position);
         }
     }
 
-    // Déplacement stratégique pour l'exploration
     fn strategic_move(&mut self, map: &Map) {
         let mut rng = rand::thread_rng();
 
-        // Direction préférée: s'éloigner davantage pour une meilleure exploration
         let directions = [
-            (0, 1),   // droite
-            (1, 0),   // bas
-            (0, -1),  // gauche
-            (-1, 0),  // haut
-            (1, 1),   // diagonale bas-droite
-            (1, -1),  // diagonale bas-gauche
-            (-1, 1),  // diagonale haut-droite
-            (-1, -1), // diagonale haut-gauche
+            (0, 1),   
+            (1, 0),   
+            (0, -1),  
+            (-1, 0),  
+            (1, 1),   
+            (1, -1),  
+            (-1, 1),  
+            (-1, -1), 
         ];
 
-        // Augmenter la distance de déplacement (4-8 cases au lieu de 2-3)
         let distance = rng.gen_range(4..=8);
 
-        // Mélanger les directions pour avoir du mouvement aléatoire
         let mut shuffled_directions = directions.to_vec();
         shuffled_directions.shuffle(&mut rng);
 
         // Explorer dans une direction jusqu'à ce qu'on trouve une position valide
         for (dx, dy) in shuffled_directions {
-            // Calculer plusieurs positions intermédiaires pour éviter de sauter par-dessus des obstacles
             let step_size = 2;
             let mut final_x = self.position.x;
             let mut final_y = self.position.y;
 
-            // Avancer par pas de 2 jusqu'à la distance souhaitée ou jusqu'à rencontrer un obstacle
             for _step in 1..=(distance / step_size) {
                 let new_x = match dx {
                     v if v > 0 => final_x.saturating_add(step_size),
@@ -174,12 +152,10 @@ impl Robot {
                     final_x = new_x;
                     final_y = new_y;
                 } else {
-                    // Position non valide, arrêter l'avancée
                     break;
                 }
             }
 
-            // Si nous avons pu nous déplacer d'au moins une case, utiliser cette position
             if final_x != self.position.x || final_y != self.position.y {
                 self.position.x = final_x;
                 self.position.y = final_y;
@@ -190,23 +166,18 @@ impl Robot {
 
     // Retour à la station
     pub fn return_to_station(&mut self, station: &Station) {
-        // Calculer le vecteur vers la station
         let dx = station.position.x as i32 - self.position.x as i32;
         let dy = station.position.y as i32 - self.position.y as i32;
 
-        // Normaliser le vecteur pour obtenir une direction
         let dir_x = dx.signum();
         let dir_y = dy.signum();
 
-        // Déplacer le robot d'un pas vers la station
         self.position.x = self.position.x.saturating_add_signed(dir_x);
         self.position.y = self.position.y.saturating_add_signed(dir_y);
 
-        // Consommer de l'énergie pour le déplacement
         self.energy -= 0.5;
     }
 
-    // Vérifie si le robot est à la station
     pub fn is_at_station(&self, station: &Station) -> bool {
         self.position.x == station.position.x && self.position.y == station.position.y
     }
@@ -237,14 +208,12 @@ mod tests {
 
     #[test]
     fn test_move_randomly_obstacle_avoidance() {
-        // Create a 3x3 map with center obstacle
         let mut map = Map::new(3, 3, 12345);
 
-        // Create obstacle ring around center using existing methods
         for y in 0..3 {
             for x in 0..3 {
                 if x == 1 && y == 1 {
-                    continue; // Keep center empty
+                    continue; 
                 }
                 if let Some(tile) = map.get_tile_mut(x, y) {
                     *tile = Tile::Obstacle;
@@ -255,7 +224,6 @@ mod tests {
         let start_pos = Position { x: 1, y: 1 };
         let mut robot = Robot::new(start_pos, vec![]);
 
-        // Try moving 10 times - should stay in center
         for _ in 0..10 {
             robot.move_randomly(&map);
             assert_eq!(

@@ -66,7 +66,6 @@ fn main() -> Result<()> {
                 for robot in robots.iter_mut() {
                     match robot.state {
                         State::Idle => {
-                            // Basculer en mode exploration
                             robot.explore_map(&map, &mut station);
                         }
                         State::Exploring { .. } => {
@@ -74,32 +73,25 @@ fn main() -> Result<()> {
                         }
                         State::Returning { .. } => {
                             if robot.is_at_station(&station) {
-                                // Calculer l'énergie nécessaire pour recharger à 100
                                 let energy_needed = 100.0 - robot.energy;
 
-                                // Vérifier si la station peut fournir cette énergie
                                 let available_energy = station.resources.energy as f32;
                                 let energy_given = energy_needed.min(available_energy);
 
-                                // Recharger le robot partiellement ou totalement
                                 robot.energy += energy_given;
                                 station.resources.energy -= energy_given as u32;
 
-                                // Déposer les ressources collectées
                                 station.collect_robot_resources(robot);
 
-                                // Retourner en mode exploration si assez d'énergie
                                 if robot.energy >= 10.0 {
                                     robot.state = State::Idle;
                                 }
                             } else {
-                                // Continuer le retour
                                 robot.return_to_station(&station);
                             }
                         }
 
                         _ => {
-                            // Pour les autres états, comportement par défaut
                             robot.move_randomly(&map);
                         }
                     }
@@ -115,17 +107,14 @@ fn main() -> Result<()> {
                 .constraints([Constraint::Min(3), Constraint::Length(6)].as_ref())
                 .split(f.size());
 
-            // Get map data once per frame
             let map_lock = map.lock().unwrap();
             let robots_lock = robots.lock().unwrap();
 
-            // Render map with robots
             let map_block = Block::default().title("Robots Swarm").borders(Borders::ALL);
             let map_widget = MapWidget::new(&map_lock, &robots_lock);
             f.render_widget(map_block.clone(), chunks[0]);
             f.render_widget(map_widget, chunks[0].inner(&Default::default()));
 
-            // Render info panel
             let (energy_bases, mineral_bases, scientific_bases) = map_lock.count_resource_bases();
             let (energy_total, mineral_total, scientific_total) =
                 map_lock.calculate_total_resources();

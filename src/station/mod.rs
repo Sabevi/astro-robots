@@ -18,28 +18,20 @@ pub struct DiscoveredResources {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Station {
-    /// Position sur la carte
     pub position: Position,
-    /// Ressources stockées dans la station
     pub resources: Resources,
-    /// Map connue par la station (pour simuler la synchronisation git-like)
     pub known_map: Option<Map>,
-    /// Robots créés par la station
     pub robots: Vec<Robot>,
-    /// Capacité maximale de robots
     pub max_robots: usize,
-    /// Coûts de production pour chaque type de robot
     pub production_costs: ProductionCosts,
-    /// Ressources découvertes
     pub discovered_resources: DiscoveredResources,
 }
 
 fn find_nearby_empty_position(map: &Map, center: Position) -> Position {
-    let max_radius = map.width.max(map.height) as i32; // pour éviter les boucles infinies
+    let max_radius = map.width.max(map.height) as i32;
     for radius in 0..max_radius {
         for dy in -radius..=radius {
             for dx in -radius..=radius {
-                // Bord de la couronne uniquement
                 if dx.abs() != radius && dy.abs() != radius {
                     continue;
                 }
@@ -59,12 +51,11 @@ fn find_nearby_empty_position(map: &Map, center: Position) -> Position {
         }
     }
 
-    // Fallback si tout est bloqué
     Position { x: 0, y: 0 }
 }
 
 fn clear_area_around_station(map: &mut Map, station_pos: &Position) {
-    let radius = 3; // Rayon de nettoyage pour éviter que la station soit bloquée
+    let radius = 3; 
 
     for dy in -radius..=radius {
         for dx in -radius..=radius {
@@ -73,7 +64,7 @@ fn clear_area_around_station(map: &mut Map, station_pos: &Position) {
 
             if x < map.width && y < map.height {
                 if let Some(tile) = map.get_tile_mut(x, y) {
-                    *tile = Tile::Empty; // Remplace tout par du vide
+                    *tile = Tile::Empty; 
                 }
             }
         }
@@ -82,32 +73,25 @@ fn clear_area_around_station(map: &mut Map, station_pos: &Position) {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ProductionCosts {
-    /// Coût en énergie et minéraux pour un robot explorateur
     pub explorer: (u32, u32),
-    /// Coût en énergie et minéraux pour un robot collecteur d'énergie
     pub energy_collector: (u32, u32),
-    /// Coût en énergie et minéraux pour un robot mineur
     pub miner: (u32, u32),
-    /// Coût en énergie et minéraux pour un robot scientifique
     pub scientist: (u32, u32),
 }
 
+// / Implémentation de la station
 impl Station {
-    /// Crée une nouvelle station à la position donnée
     pub fn new(global_map: &mut Map) -> Self {
         let preferred_pos = Position { x: 10, y: 10 };
 
         let pos = find_nearby_empty_position(global_map, preferred_pos);
 
-        // Nettoyer la zone autour AVANT de placer la station
         clear_area_around_station(global_map, &pos);
 
-        // Placer la station après nettoyage
         if let Some(tile) = global_map.get_tile_mut(pos.x, pos.y) {
             *tile = Tile::Station;
         }
 
-        // Retourner l'instance de la station
         Self {
             position: pos,
             resources: Resources {
@@ -128,31 +112,23 @@ impl Station {
         }
     }
 
-    /// Met à jour l'état de la station
     pub fn update(&mut self, _global_map: &Map) {
-        // Mettre à jour la logique de la station ici
         self.sync_with_returned_robots();
     }
 
-    /// Synchronise les données avec les robots qui sont revenus à la station
     fn sync_with_returned_robots(&mut self) {
-        // À implémenter: logique de synchronisation "git-like"
     }
 
-    /// Collecte les ressources des robots revenus à la station
     pub fn collect_robot_resources(&mut self, robot: &mut Robot) {
-        // Ajouter les ressources du robot à la station
         self.resources.energy += robot.inventory.energy;
         self.resources.minerals += robot.inventory.minerals;
         self.resources.scientific_data += robot.inventory.scientific_data;
 
-        // Vider l'inventaire du robot
         robot.inventory.energy = 0;
         robot.inventory.minerals = 0;
         robot.inventory.scientific_data = 0;
     }
 
-    /// Vérifie si un robot peut être créé selon les ressources disponibles
     pub fn can_create_robot(&self, robot_type: RobotType) -> bool {
         match robot_type {
             RobotType::Explorer => {
@@ -316,11 +292,10 @@ impl Station {
     }
 }
 
-/// Enum représentant les différents types de robots que la station peut créer
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub enum RobotType {
-    Explorer,        // Robot pour explorer et cartographier
-    EnergyCollector, // Robot pour collecter de l'énergie
-    Miner,           // Robot pour collecter des minéraux
-    Scientist,       // Robot pour collecter des données scientifiques
+    Explorer,        
+    EnergyCollector, 
+    Miner,           
+    Scientist,       
 }
