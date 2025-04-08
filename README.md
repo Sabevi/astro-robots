@@ -12,3 +12,9 @@ To run this project:
 To run tests:
 
 `cargo test`
+
+**Authors**:
+- Sara Bevilacqua
+- Ziad Lahrouni
+- Sabrina Tamda
+- Mohamed Kerraz
